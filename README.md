@@ -18,12 +18,6 @@ A Python package that provides persistent function result caching with support f
 - ⚡ Efficient hashing of function arguments
 - 🐛 Comprehensive error handling
 
-## Installation
-
-```bash
-pip install persistent-cache
-```
-
 ## Quick Start
 
 ### Basic Usage
