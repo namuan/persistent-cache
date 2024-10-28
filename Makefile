@@ -19,10 +19,7 @@ clean: ## Clean package
 	rm -rf build dist
 
 package: clean pre-commit ## Run installer
-	pyinstaller main.spec
-
-install-macosx: package ## Installs application in users Application folder
-	./scripts/install-macosx.sh ActiveBreaks.app
+	$(PY) -m build
 
 .PHONY: help
 .DEFAULT_GOAL := help
