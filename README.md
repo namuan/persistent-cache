@@ -18,12 +18,18 @@ A Python package that provides persistent function result caching with support f
 - ⚡ Efficient hashing of function arguments
 - 🐛 Comprehensive error handling
 
+## Installation
+
+```shell
+python3 -m pip install git+https://github.com/namuan/persistent-cache
+```
+
 ## Quick Start
 
 ### Basic Usage
 
 ```python
-from persistent_cache import PersistentCache
+from persistent_cache.core import PersistentCache
 
 @PersistentCache()
 def expensive_calculation(x: int, y: int) -> int:
@@ -41,7 +47,7 @@ result2 = expensive_calculation(1, 2)  # No printing, returns cached result
 
 ```python
 from dataclasses import dataclass
-from persistent_cache import PersistentCache
+from persistent_cache.core import PersistentCache
 
 @dataclass
 class Point:
@@ -63,7 +69,7 @@ distance2 = calculate_distance(Point(3.0, 4.0))  # Uses cache
 **With Custom Classes**
 
 ```python
-from persistent_cache import PersistentCache
+from persistent_cache.core import PersistentCache
 
 class Rectangle:
     def __init__(self, width: float, height: float):
@@ -116,7 +122,7 @@ result = process_data(
 **Error Handling**
 
 ```python
-from persistent_cache import CacheError, SerializationError
+from persistent_cache.exceptions import CacheError, SerializationError
 
 try:
     @PersistentCache()
