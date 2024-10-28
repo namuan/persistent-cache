@@ -1,4 +1,5 @@
 export PROJECTNAME=$(shell basename "$(PWD)")
+export CONTEXT_DIR=build
 PY=./venv/bin/python3
 
 .SILENT: ;               # no need for @
@@ -20,6 +21,16 @@ clean: ## Clean package
 
 package: clean pre-commit ## Run installer
 	$(PY) -m build
+
+tests: clean ## Run tests
+	./venv/bin/pytest -v
+
+context: clean ## Build context file from application sources
+	echo "Generating context in $(CONTEXT_DIR) directory"
+	mkdir -p $(CONTEXT_DIR)/
+	cd src/ && llm-context-builder.py --extensions .py --ignored_dirs build dist generated venv .venv .idea .aider.tags.cache.v3 --print_contents > ../$(CONTEXT_DIR)/persistent-cache-src.py
+	cd tests/ && llm-context-builder.py --extensions .py --ignored_dirs build dist generated venv .venv .idea .aider.tags.cache.v3 --print_contents > ../$(CONTEXT_DIR)/persistent-cache-tests.py
+	echo `pwd`/$(CONTEXT_DIR) | pbcopy
 
 .PHONY: help
 .DEFAULT_GOAL := help
