@@ -1,4 +1,6 @@
 from dataclasses import dataclass
+from datetime import datetime
+from datetime import timezone
 
 import pytest
 from persistent_cache.exceptions import SerializationError
@@ -101,3 +103,47 @@ def test_complex_nested_structure():
     assert isinstance(deserialized["list"][0], SimpleData)
     assert isinstance(deserialized["list"][1]["nested"], SimpleData)
     assert isinstance(deserialized["dict"]["a"], SimpleData)
+
+
+def test_datetime_serialization():
+    # Test naive datetime
+    naive_dt = datetime(2024, 1, 1, 12, 0, 0)
+    serialized_naive = ObjectSerializer.serialize(naive_dt)
+    deserialized_naive = ObjectSerializer.deserialize(serialized_naive)
+
+    assert isinstance(deserialized_naive, datetime)
+    assert deserialized_naive.year == 2024
+    assert deserialized_naive.month == 1
+    assert deserialized_naive.day == 1
+    assert deserialized_naive.hour == 12
+    assert deserialized_naive.minute == 0
+    assert deserialized_naive.second == 0
+    assert deserialized_naive.tzinfo is None
+
+    # Test timezone-aware datetime
+    aware_dt = datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+    serialized_aware = ObjectSerializer.serialize(aware_dt)
+    deserialized_aware = ObjectSerializer.deserialize(serialized_aware)
+
+    assert isinstance(deserialized_aware, datetime)
+    assert deserialized_aware.year == 2024
+    assert deserialized_aware.month == 1
+    assert deserialized_aware.day == 1
+    assert deserialized_aware.hour == 12
+    assert deserialized_aware.minute == 0
+    assert deserialized_aware.second == 0
+
+    # Test datetime in complex structure
+    complex_data = {
+        "dt": naive_dt,
+        "list": [aware_dt, naive_dt],
+        "nested": {"dt": aware_dt},
+    }
+
+    serialized_complex = ObjectSerializer.serialize(complex_data)
+    deserialized_complex = ObjectSerializer.deserialize(serialized_complex)
+
+    assert isinstance(deserialized_complex["dt"], datetime)
+    assert isinstance(deserialized_complex["list"][0], datetime)
+    assert isinstance(deserialized_complex["list"][1], datetime)
+    assert isinstance(deserialized_complex["nested"]["dt"], datetime)

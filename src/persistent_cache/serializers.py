@@ -2,9 +2,12 @@ import importlib
 import inspect
 from dataclasses import asdict
 from dataclasses import is_dataclass
+from datetime import datetime
+from datetime import timezone
 from typing import Any
 from typing import Set
 
+import pytz
 from persistent_cache.exceptions import SerializationError
 
 
@@ -26,6 +29,19 @@ class ObjectSerializer:
         seen.add(obj_id)
 
         try:
+            if isinstance(obj, datetime):
+                return {
+                    "__datetime__": True,
+                    "year": obj.year,
+                    "month": obj.month,
+                    "day": obj.day,
+                    "hour": obj.hour,
+                    "minute": obj.minute,
+                    "second": obj.second,
+                    "microsecond": obj.microsecond,
+                    "tzinfo": str(obj.tzinfo) if obj.tzinfo else None,
+                }
+
             if is_dataclass(obj):
                 return {
                     "__dataclass__": obj.__class__.__name__,
@@ -69,6 +85,28 @@ class ObjectSerializer:
             return obj
 
         if isinstance(obj, dict):
+            if "__datetime__" in obj:
+                tz = None
+                if obj["tzinfo"]:
+                    if obj["tzinfo"] == "UTC":
+                        tz = timezone.utc
+                    else:
+                        try:
+                            tz = pytz.timezone(obj["tzinfo"])
+                        except pytz.exceptions.UnknownTimeZoneError:
+                            tz = None
+
+                return datetime(
+                    year=obj["year"],
+                    month=obj["month"],
+                    day=obj["day"],
+                    hour=obj["hour"],
+                    minute=obj["minute"],
+                    second=obj["second"],
+                    microsecond=obj["microsecond"],
+                    tzinfo=tz,
+                )
+
             if "__dataclass__" in obj:
                 module_name = obj["module"]
                 class_name = obj["__dataclass__"]
