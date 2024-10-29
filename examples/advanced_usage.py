@@ -1,4 +1,3 @@
-import os
 import time
 from dataclasses import dataclass
 
@@ -90,28 +89,6 @@ def demonstrate_complex_caching():
     print(f"Duration: {duration2:.2f}s")
 
 
-def demonstrate_cache_management():
-    print("\nCache Management Example")
-    print("=" * 50)
-
-    # Clear specific cache entries
-    cache.clear("process_user_data")
-    print("Cleared cache for process_user_data")
-
-    # Clear all cache
-    cache.clear_all()
-    print("Cleared all cache")
-
-    # Cache size
-    cache_size = sum(
-        os.path.getsize(os.path.join(CACHE_DIR, f))
-        for f in os.listdir(CACHE_DIR)
-        if os.path.isfile(os.path.join(CACHE_DIR, f))
-    )
-    print(f"Current cache size: {cache_size / 1024:.2f} KB")
-
-
 if __name__ == "__main__":
     demonstrate_dataclass_caching()
     demonstrate_complex_caching()
-    demonstrate_cache_management()

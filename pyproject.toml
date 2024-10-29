@@ -18,7 +18,7 @@ strict = true
 
 [project]
 name = "persistent_cache"
-version = "0.1.0"
+version = "0.1.1"
 description = "A Python package for persistent function result caching"
 authors = [{ name = "Namuan", email = "namuan@deskriders.dev" }]
 license = { file = "LICENSE" }

@@ -7,7 +7,7 @@ with open("README.md", encoding="utf-8") as fh:
 
 setup(
     name="persistent-cache",
-    version="0.1.0",
+    version="0.1.1",
     author="Namuan",
     author_email="namuan@deskriders.dev",
     description="A persistent caching library for Python functions",

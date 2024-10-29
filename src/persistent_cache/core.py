@@ -1,130 +1,142 @@
-# src/persistent_cache/cache.py
+import functools
 import hashlib
-import json
+import logging
 import os
-from functools import wraps
+import pickle
+from pathlib import Path
 from typing import Any
 from typing import Callable
 from typing import Optional
 
-from .exceptions import CacheCorruptionError
-from .exceptions import CacheError
-from .serializers import ObjectSerializer
-
 
 class PersistentCache:
-    def __init__(self, cache_dir: str = ".cache"):
-        self.cache_dir = cache_dir
-        self._init_cache_dir()
+    """
+    A decorator class that provides persistent caching of function results.
 
-    def _init_cache_dir(self) -> None:
-        """Initialize cache directory with proper validation"""
-        if os.path.exists(self.cache_dir):
-            if not os.path.isdir(self.cache_dir):
-                raise ValueError(
-                    f"Cannot create cache directory: '{self.cache_dir}' exists and is not a directory"
-                )
+    Features:
+    - Persistent storage of function results
+    - Automatic serialization of complex data types
+    - Configurable cache directory
+    - Efficient argument hashing
+    - Comprehensive error handling
+    """
+
+    def __init__(
+        self, cache_dir: Optional[str] = None, expiry_seconds: Optional[int] = None
+    ):
+        """
+        Initialize the cache decorator.
+
+        Args:
+            cache_dir: Directory to store cache files. Defaults to '.cache'
+            expiry_seconds: Cache expiry time in seconds. None means no expiry
+        """
+        self.cache_dir = Path(cache_dir or ".cache")
+        self.expiry_seconds = expiry_seconds
+        self._setup_cache_dir()
+
+    def _setup_cache_dir(self) -> None:
+        """Create cache directory if it doesn't exist."""
         try:
-            os.makedirs(self.cache_dir, exist_ok=True)
-        except OSError as e:
-            raise ValueError(
-                f"Cannot create cache directory '{self.cache_dir}': {str(e)}"
-            )
+            self.cache_dir.mkdir(parents=True, exist_ok=True)
+        except Exception as e:
+            logging.error(f"Failed to create cache directory: {e}")
+            raise
 
-    def _get_cache_key(self, func_name: str, args: tuple, kwargs: dict) -> str:
-        """Generate a unique cache key based on function name and arguments"""
-        serialized_args = ObjectSerializer.serialize((args, kwargs))
-        args_hash = hashlib.md5(json.dumps(serialized_args).encode()).hexdigest()
-        return f"{func_name}_{args_hash}"
+    def _generate_key(self, func: Callable, args: tuple, kwargs: dict) -> str:
+        """
+        Generate a unique cache key based on function name and arguments.
 
-    def _get_cache_path(self, cache_key: str) -> str:
-        """Get the full path for a cache file"""
-        return os.path.join(self.cache_dir, f"{cache_key}.json")
-
-    def get(self, cache_key: str) -> Optional[Any]:
-        """Retrieve a value from cache"""
-        cache_path = self._get_cache_path(cache_key)
-        if os.path.exists(cache_path):
-            try:
-                with open(cache_path) as f:
-                    serialized_data = json.load(f)
-                    return ObjectSerializer.deserialize(serialized_data)
-            except (
-                json.JSONDecodeError,
-                ValueError,
-                TypeError,
-                KeyError,
-                IndexError,
-            ) as e:
-                # Remove corrupted cache file
-                try:
-                    os.remove(cache_path)
-                except OSError:
-                    pass  # Ignore deletion errors
-                raise CacheCorruptionError(
-                    f"Corrupted cache file {cache_path}: {str(e)}"
-                )
-        return None
-
-    def set(self, cache_key: str, value: Any) -> None:
-        """Store a value in cache"""
-        cache_path = self._get_cache_path(cache_key)
+        Returns:
+            str: A hex digest of the hash
+        """
         try:
-            serialized_data = ObjectSerializer.serialize(value)
-            with open(cache_path, "w") as f:
-                json.dump(serialized_data, f)
-        except (TypeError, ValueError, OSError) as e:
-            raise CacheError(f"Failed to write cache file {cache_path}: {str(e)}")
+            # Combine function name with stringified arguments
+            key_parts = [func.__name__, str(args), str(sorted(kwargs.items()))]
+            key_string = "|".join(key_parts)
 
-    def clear(self, func_name: str) -> None:
-        """Clear cache entries for a specific function"""
-        for filename in os.listdir(self.cache_dir):
-            if filename.startswith(f"{func_name}_"):
-                try:
-                    os.remove(os.path.join(self.cache_dir, filename))
-                except OSError:
-                    pass  # Ignore deletion errors
+            # Create an MD5 hash of the key string
+            return hashlib.md5(key_string.encode()).hexdigest()
+        except Exception as e:
+            logging.error(f"Failed to generate cache key: {e}")
+            raise
 
-    def clear_all(self) -> None:
-        """Clear all cache entries"""
-        for filename in os.listdir(self.cache_dir):
-            if filename.endswith(".json"):
-                try:
-                    os.remove(os.path.join(self.cache_dir, filename))
-                except OSError:
-                    pass  # Ignore deletion errors
+    def _get_cache_path(self, key: str) -> Path:
+        """Get the full path for a cache file."""
+        return self.cache_dir / f"{key}.pickle"
 
-    def get_size(self) -> int:
-        """Get total size of cache in bytes"""
-        total_size = 0
-        for filename in os.listdir(self.cache_dir):
-            file_path = os.path.join(self.cache_dir, filename)
-            if os.path.isfile(file_path):
-                try:
-                    total_size += os.path.getsize(file_path)
-                except OSError:
-                    pass  # Ignore file access errors
-        return total_size
+    def _save_to_cache(self, key: str, value: Any) -> None:
+        """Save a value to the cache."""
+        try:
+            cache_path = self._get_cache_path(key)
+            with open(cache_path, "wb") as f:
+                pickle.dump(
+                    {
+                        "value": value,
+                        "timestamp": os.time() if self.expiry_seconds else None,
+                    },
+                    f,
+                )
+        except Exception as e:
+            logging.error(f"Failed to save to cache: {e}")
+            raise
+
+    def _load_from_cache(self, key: str) -> Optional[Any]:
+        """Load a value from the cache if it exists and hasn't expired."""
+        try:
+            cache_path = self._get_cache_path(key)
+
+            if not cache_path.exists():
+                return None
+
+            with open(cache_path, "rb") as f:
+                cached_data = pickle.load(f)
+
+            # Check expiration if applicable
+            if self.expiry_seconds:
+                if os.time() - cached_data["timestamp"] > self.expiry_seconds:
+                    cache_path.unlink()  # Delete expired cache
+                    return None
+
+            return cached_data["value"]
+
+        except Exception as e:
+            logging.error(f"Failed to load from cache: {e}")
+            return None
 
     def __call__(self, func: Callable) -> Callable:
-        """Decorator for caching function results"""
+        """
+        Decorator implementation.
 
-        @wraps(func)
+        Args:
+            func: The function to cache
+
+        Returns:
+            Callable: Wrapped function with caching
+        """
+
+        @functools.wraps(func)
         def wrapper(*args, **kwargs):
-            cache_key = self._get_cache_key(func.__name__, args, kwargs)
             try:
-                result = self.get(cache_key)
-                if result is not None:
-                    return result
-            except CacheCorruptionError:
-                pass  # Proceed to recalculate on corruption
+                # Generate cache key
+                cache_key = self._generate_key(func, args, kwargs)
 
-            result = func(*args, **kwargs)
-            try:
-                self.set(cache_key, result)
-            except CacheError:
-                pass  # Ignore cache writing errors
+                # Try to load from cache
+                cached_result = self._load_from_cache(cache_key)
+                if cached_result is not None:
+                    return cached_result
 
-            return result
+                # Calculate new result
+                result = func(*args, **kwargs)
+
+                # Save to cache
+                self._save_to_cache(cache_key, result)
+
+                return result
+
+            except Exception as e:
+                logging.error(f"Cache operation failed: {e}")
+                # Fall back to original function
+                return func(*args, **kwargs)
 
         return wrapper
