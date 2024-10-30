@@ -1,18 +1,12 @@
 # Persistent Cache
 
-A Python package that provides persistent function result caching with support for complex data types, including classes and dataclasses.
+A Python package that provides persistent function result caching.
 
 ## Features
 
 - 🚀 Simple decorator-based implementation
 - 💾 Persistent caching across program restarts
 - 🔄 Automatic serialization of complex data types
-- 📦 Support for:
-    - Basic types (int, float, str, bool)
-    - Collections (lists, tuples, dictionaries)
-    - Dataclasses
-    - Custom classes
-    - Nested data structures
 - 🔒 Thread-safe file operations
 - 📁 Customizable cache directory
 - ⚡ Efficient hashing of function arguments
@@ -118,30 +112,6 @@ result = process_data(
     config={'max_iterations': 100}
 )
 ```
-
-**Error Handling**
-
-```python
-from persistent_cache.exceptions import CacheError, SerializationError
-
-try:
-    @PersistentCache()
-    def risky_function(data):
-        # Some risky operation
-        pass
-
-except SerializationError as e:
-    print(f"Failed to serialize arguments: {e}")
-except CacheError as e:
-    print(f"Cache operation failed: {e}")
-```
-
-## Performance Considerations
-
-Cache files are stored per function
-Arguments are hashed using MD5 for quick lookup
-Large arguments may impact serialization performance
-Cache files grow as more unique argument combinations are used
 
 ## Contributing
 Contributions are welcome! Please feel free to submit a Pull Request.
