@@ -42,3 +42,11 @@ repos:
         args: [ --fix ]
       - id: ruff-format # formatter
         types_or: [ python, pyi, jupyter, toml ]
+  - repo: local
+    hooks:
+      - id: pytest
+        name: pytest
+        entry: pytest
+        language: system
+        pass_filenames: false
+        always_run: true

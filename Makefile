@@ -22,7 +22,7 @@ clean: ## Clean package
 package: clean pre-commit ## Run installer
 	$(PY) -m build
 
-tests: clean ## Run tests
+test: clean ## Run tests
 	./venv/bin/pytest -v
 
 context: clean ## Build context file from application sources
