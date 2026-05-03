@@ -1,8 +1,8 @@
 import functools
 import hashlib
 import logging
-import os
 import pickle
+import time
 from pathlib import Path
 from typing import Any
 from typing import Callable
@@ -73,7 +73,7 @@ class PersistentCache:
                 pickle.dump(
                     {
                         "value": value,
-                        "timestamp": os.time() if self.expiry_seconds else None,
+                        "timestamp": time.time() if self.expiry_seconds else None,
                     },
                     f,
                 )
@@ -94,7 +94,7 @@ class PersistentCache:
 
             # Check expiration if applicable
             if self.expiry_seconds:
-                if os.time() - cached_data["timestamp"] > self.expiry_seconds:
+                if time.time() - cached_data["timestamp"] > self.expiry_seconds:
                     cache_path.unlink()  # Delete expired cache
                     return None
 

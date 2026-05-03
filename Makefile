@@ -9,14 +9,15 @@ deps: ## Install dependencies
 	$(PY) -m pip install --upgrade pip
 
 pre-commit: ## Manually run all precommit hooks
-	./venv/bin/pre-commit install
-	./venv/bin/pre-commit run --all-files
+	PATH="$(shell dirname $(PY)):$$PATH" ./venv/bin/pre-commit install
+	PATH="$(shell dirname $(PY)):$$PATH" ./venv/bin/pre-commit run --all-files
 
 pre-commit-tool: ## Manually run a single pre-commit hook
-	./venv/bin/pre-commit run $(TOOL) --all-files
+	PATH="$(shell dirname $(PY)):$$PATH" ./venv/bin/pre-commit run $(TOOL) --all-files
 
 clean: ## Clean package
-	find . -type d -name '__pycache__' | xargs rm -rf
+	find . -type d -name '__pycache__' -not -path "./venv/*" | xargs rm -rf
+	find . -type d -name "*.egg-info" | xargs rm -rf
 	rm -rf build dist
 
 package: clean pre-commit ## Run installer
